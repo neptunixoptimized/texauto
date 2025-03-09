@@ -278,27 +278,45 @@ main() {
     echo "   ██║   ██╔══╝  ██╔══██║██╔═══╝ ██║   ██║██╔═══╝ ██╔══██╗██╔══╝  "
     echo "   ██║   ███████╗██║  ██║██║     ╚██████╔╝██║     ██║  ██║███████╗"
     echo "   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝      ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚══════╝"
-    echo -e "${GRAD2}                     v5.0 by TEXSER${NC}"
+    echo -e "${GRAD2}                     v5.2 by TEXSER${NC}"
     echo -e "${GRAD3}═══════════════════════════════════════════════${NC}"
 
-    read -p "$(echo -e "${GRAD2}Создать SWAP файл? (y/n): ${NC}")" SWAP_CHOICE
-    [[ "$SWAP_CHOICE" =~ [Yy] ]] && SWAP_ENABLED=true
+    while true; do
+        read -p "$(echo -e "${GRAD2}Создать SWAP файл? (y/n): ${NC}")" SWAP_CHOICE
+        case "$SWAP_CHOICE" in
+            [Yy]* ) SWAP_ENABLED=true; break;;
+            [Nn]* ) SWAP_ENABLED=false; break;;
+            * ) echo -e "${RED}Пожалуйста, введите Y или N${NC}";;
+        esac
+    done
 
     while true; do
         read -p "$(echo -e "${GRAD2}Введите домен или IP: ${NC}")" FQDN
-        if [[ -n "$FQDN" ]]; then
-            break
-        else
+        FQDN=$(echo "$FQDN" | tr -d '[:space:]')
+        
+        if [[ -z "$FQDN" ]]; then
             echo -e "${RED}Поле не может быть пустым!${NC}"
+        elif [[ $FQDN =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            if [[ $(ipcalc -cs "$FQDN" && echo valid || echo invalid) == "valid" ]]; then
+                PROTOCOL="http"
+                break
+            else
+                echo -e "${RED}Некорректный IP-адрес!${NC}"
+            fi
+        elif [[ $FQDN =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](\.[a-zA-Z]{2,})+$ ]]; then
+            if dig +short "$FQDN" | grep -q '^[0-9.]\+$'; then
+                PROTOCOL="https"
+                SSL_ENABLED=true
+                break
+            else
+                echo -e "${RED}Домен не резолвится!${NC}"
+            fi
+        else
+            echo -e "${RED}Некорректный формат! Примеры:${NC}"
+            echo -e "IP: 192.168.1.1"
+            echo -e "Домен: panel.example.com"
         fi
     done
-
-    if [[ $FQDN =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        PROTOCOL="http"
-    else
-        PROTOCOL="https"
-        SSL_ENABLED=true
-    fi
 
     system_update
     setup_swap
@@ -310,5 +328,3 @@ main() {
     install_wings
     finalize
 }
-
-main
